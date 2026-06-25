@@ -1,7 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { MyraaAudioSession, LiveState } from "./lib/audio";
 import { AppLauncher } from "@capacitor/app-launcher";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { MyraaCoreVisualizer, MyraaEmotion } from "./components/MyraaCoreVisualizer";
+
+interface MyraaOverlayPluginType {
+  checkOverlayPermission(): Promise<{ granted: boolean }>;
+  requestOverlayPermission(): Promise<{ requested: boolean; alreadyGranted?: boolean; error?: string }>;
+  startOverlayService(): Promise<{ success: boolean }>;
+  stopOverlayService(): Promise<{ success: boolean }>;
+}
+
+const MyraaOverlay = registerPlugin<MyraaOverlayPluginType>("MyraaOverlay");
+
+interface MyraaAccessibilityPluginType {
+  checkAccessibilityPermission(): Promise<{ granted: boolean }>;
+  requestAccessibilityPermission(): Promise<{ requested: boolean; error?: string }>;
+  performClick(args: { text?: string; x?: number; y?: number }): Promise<{ success: boolean }>;
+  performType(args: { text: string }): Promise<{ success: boolean }>;
+  performScroll(args: { direction: string }): Promise<{ success: boolean }>;
+  performGlobalAction(args: { action: string }): Promise<{ success: boolean }>;
+  getScreenContent(): Promise<{ elements: any[] }>;
+}
+
+const MyraaAccessibility = registerPlugin<MyraaAccessibilityPluginType>("MyraaAccessibility");
 import { BrowserAgent } from "./components/BrowserAgent";
 import { getBaseUrl, setStoredBridgeUrl } from "./lib/config";
 import { 
@@ -259,7 +281,140 @@ export default function App() {
   const [showMemoryDashboard, setShowMemoryDashboard] = useState<boolean>(false);
   const [wakeWordState, setWakeWordState] = useState<"idle" | "listening" | "blocked" | "unsupported">("idle");
 
+  const [overlayPermissionGranted, setOverlayPermissionGranted] = useState<boolean>(false);
+  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState<boolean>(false);
+  const [overlayEnabled, setOverlayEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myraa_overlay_enabled") === "true";
+    }
+    return false;
+  });
+
   const sessionRef = useRef<MyraaAudioSession | null>(null);
+
+  // Check and sync Android overlay & accessibility permission & background hooks on mount
+  useEffect(() => {
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative) {
+      MyraaOverlay.checkOverlayPermission()
+        .then((res) => {
+          setOverlayPermissionGranted(res.granted);
+        })
+        .catch((err) => console.warn("[Overlay] checkOverlayPermission failed:", err));
+
+      MyraaAccessibility.checkAccessibilityPermission()
+        .then((res) => {
+          setAccessibilityPermissionGranted(res.granted);
+        })
+        .catch((err) => console.warn("[Accessibility] checkAccessibilityPermission failed:", err));
+    }
+  }, []);
+
+  // Sync background/minimize lifecycle events to auto-start/stop background overlay
+  useEffect(() => {
+    const isNative = Capacitor.isNativePlatform();
+    if (!isNative) return;
+
+    const handleVisibilityChange = async () => {
+      if (document.hidden) {
+        // App is minimized/closed
+        if (overlayEnabled && overlayPermissionGranted) {
+          try {
+            console.log("[Overlay] App minimized. Launching background floating bubble service...");
+            await MyraaOverlay.startOverlayService();
+          } catch (e) {
+            console.error("[Overlay] Failed launching service:", e);
+          }
+        }
+      } else {
+        // App returned to foreground
+        try {
+          console.log("[Overlay] App restored. Dismissing floating bubble service...");
+          await MyraaOverlay.stopOverlayService();
+        } catch (e) {
+          console.error("[Overlay] Failed stopping service:", e);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [overlayEnabled, overlayPermissionGranted]);
+
+  const handleToggleOverlay = async () => {
+    const isNative = Capacitor.isNativePlatform();
+    if (!isNative) {
+      setErrorText("Background overlays are only supported inside the native Android mobile app.");
+      return;
+    }
+
+    if (!overlayPermissionGranted) {
+      try {
+        const res = await MyraaOverlay.requestOverlayPermission();
+        if (res.alreadyGranted) {
+          setOverlayPermissionGranted(true);
+          const newVal = !overlayEnabled;
+          setOverlayEnabled(newVal);
+          localStorage.setItem("myraa_overlay_enabled", String(newVal));
+        } else {
+          setErrorText("Please authorize 'Draw over other apps / Display pop-up window' permission in the system settings page that just opened, then toggle this setting again!");
+          // Check permission again after they return
+          setTimeout(async () => {
+            const check = await MyraaOverlay.checkOverlayPermission();
+            setOverlayPermissionGranted(check.granted);
+          }, 3000);
+        }
+      } catch (e: any) {
+        setErrorText("Could not request overlay permissions: " + (e.message || e));
+      }
+    } else {
+      const newVal = !overlayEnabled;
+      setOverlayEnabled(newVal);
+      localStorage.setItem("myraa_overlay_enabled", String(newVal));
+      
+      // If manually disabling, stop the service immediately in case it is active
+      if (!newVal) {
+        try {
+          await MyraaOverlay.stopOverlayService();
+        } catch (e) {}
+      }
+    }
+  };
+
+  const handleToggleAccessibility = async () => {
+    const isNative = Capacitor.isNativePlatform();
+    if (!isNative) {
+      setErrorText("Accessibility Service integration is only supported inside the native Android mobile app.");
+      return;
+    }
+
+    try {
+      const check = await MyraaAccessibility.checkAccessibilityPermission();
+      if (check.granted) {
+        setAccessibilityPermissionGranted(true);
+        setErrorText("Myraa Accessibility Service is already active and running!");
+      } else {
+        setErrorText("Opening phone Settings. Please locate and enable 'Myraa Voice-to-Screen Controller' under Accessibility settings!");
+        await MyraaAccessibility.requestAccessibilityPermission();
+        
+        // Let's check periodically after they return from settings page
+        const interval = setInterval(async () => {
+          const reCheck = await MyraaAccessibility.checkAccessibilityPermission();
+          if (reCheck.granted) {
+            setAccessibilityPermissionGranted(true);
+            clearInterval(interval);
+          }
+        }, 2000);
+        
+        // Stop checking after 1 minute to prevent leaks
+        setTimeout(() => clearInterval(interval), 60000);
+      }
+    } catch (e: any) {
+      setErrorText("Could not request accessibility permission: " + (e.message || e));
+    }
+  };
 
   // Fetch initial recollections from backend database
   useEffect(() => {
@@ -562,6 +717,82 @@ export default function App() {
               }
             })();
           }
+        } else if (name === "tapOnScreen") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "tapOnScreen is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.performClick({
+                text: args.text,
+                x: args.x,
+                y: args.y
+              });
+              callback({ result: res.success ? `Successfully tapped target ${args.text || `coordinates (${args.x}, ${args.y})`}` : `Failed to tap target ${args.text || `coordinates (${args.x}, ${args.y})`}` });
+            } catch (err: any) {
+              callback({ error: `Could not perform tap gesture: ${err.message || err}` });
+            }
+          })();
+        } else if (name === "typeText") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "typeText is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.performType({ text: args.text });
+              callback({ result: res.success ? `Successfully typed '${args.text}' into the active text field.` : `Could not find an active or focused input field to type into.` });
+            } catch (err: any) {
+              callback({ error: `Could not type text: ${err.message || err}` });
+            }
+          })();
+        } else if (name === "scrollScreen") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "scrollScreen is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.performScroll({ direction: args.direction });
+              callback({ result: res.success ? `Successfully scrolled screen ${args.direction}.` : `Scroll gesture failed.` });
+            } catch (err: any) {
+              callback({ error: `Could not scroll screen: ${err.message || err}` });
+            }
+          })();
+        } else if (name === "readScreenContent") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "readScreenContent is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.getScreenContent();
+              if (res && res.elements && res.elements.length > 0) {
+                const summary = res.elements.map((el, i) => {
+                  return `${i + 1}. [${el.className?.split('.').pop() || 'Element'}] text: "${el.text || ''}" desc: "${el.description || ''}" (clickable: ${el.isClickable}, bounds: center X=${el.bounds?.centerX}, Y=${el.bounds?.centerY})`;
+                }).join("\n");
+                callback({ result: `Captured Screen Content:\n${summary}` });
+              } else {
+                callback({ result: "I read the screen, but could not detect any visible text labels or interactive elements right now. Make sure the screen is unlocked and not on a secure layout." });
+              }
+            } catch (err: any) {
+              callback({ error: `Could not read screen contents: ${err.message || err}` });
+            }
+          })();
+        } else if (name === "goBackOrHome") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "goBackOrHome is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.performGlobalAction({ action: args.action });
+              callback({ result: res.success ? `Successfully triggered Android global action: ${args.action}` : `Failed to execute system ${args.action} action.` });
+            } catch (err: any) {
+              callback({ error: `Could not execute global action: ${err.message || err}` });
+            }
+          })();
         } else {
           callback({ error: `Tool ${name} is not implemented.` });
         }
@@ -1024,6 +1255,77 @@ export default function App() {
                     SAVE
                   </button>
                 </div>
+              </div>
+
+              <div className="mb-4 border-t border-white/10 pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <h5 className="text-xs font-bold text-slate-200 uppercase tracking-wide font-sans">
+                      Holographic Background Overlay
+                    </h5>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5 leading-relaxed">
+                      Launches a beautiful pulsing bubble companion on your device when minimizing the app so Myraa stays active.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleOverlay}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      overlayEnabled ? "bg-cyan-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        overlayEnabled ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {!overlayPermissionGranted && overlayEnabled && (
+                  <p className="text-[9px] text-amber-400 font-mono mt-1 animate-pulse">
+                    ⚠️ Tap toggle to grant 'Draw over other apps' system permission.
+                  </p>
+                )}
+                {overlayPermissionGranted && overlayEnabled && (
+                  <p className="text-[9px] text-cyan-400 font-mono mt-1">
+                    ✓ Overlay permission active! Minimize the app to view the companion.
+                  </p>
+                )}
+              </div>
+
+              <div className="mb-4 border-t border-white/10 pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <h5 className="text-xs font-bold text-slate-200 uppercase tracking-wide font-sans flex items-center gap-1.5">
+                      <span>Hands-Free Screen Voice Controller</span>
+                      <span className="px-1.5 py-0.5 text-[8px] bg-indigo-500/30 text-indigo-300 rounded font-mono font-normal">Native</span>
+                    </h5>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5 leading-relaxed">
+                      Enables Myraa to control your device's screen (clicks, text entry, scroll gestures) via voice commands. Requires Accessibility Service.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleAccessibility}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      accessibilityPermissionGranted ? "bg-indigo-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        accessibilityPermissionGranted ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {!accessibilityPermissionGranted && (
+                  <p className="text-[9px] text-amber-400 font-mono mt-1 animate-pulse flex items-center gap-1">
+                    ⚠️ Tap toggle to grant 'Myraa Voice-to-Screen Controller' service permission in Settings.
+                  </p>
+                )}
+                {accessibilityPermissionGranted && (
+                  <p className="text-[9px] text-indigo-400 font-mono mt-1 flex items-center gap-1">
+                    ✓ Accessibility service active! Say 'scroll down' or 'tap search' to command hands-free.
+                  </p>
+                )}
               </div>
 
               <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
