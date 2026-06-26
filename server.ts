@@ -712,7 +712,9 @@ JSON Schema:
         "   - You now have standard, comprehensive browser agent capabilities to navigate, search, scroll, click, type text, open tabs, and control video players on YouTube, Google, Instagram, Twitter/X, and any general web page!\n" +
         "   - STRECT GOOGLE VS YOUTUBE ROUTING RULE: Play/search songs or music ONLY in the portal (YouTube). For all general questions, information, tutorials (e.g., 'how to play chess'), news, reading blogs, or searching for info like 'KAMOKU PLAYZ', you MUST strictly use Google Search in the Google tab. Never redirect general research/info queries to YouTube or play them as songs!\n" +
         "   - When Zenpai asks you to play any song or find music, IMMEDIATELY call 'browserSearch' with a query like 'play [song name or description]'. The virtual browser is extremely smart and will automatically locate, click on, and play the first matching video for them instantly! You do not have to manually look up the video ID—just search for it with 'play' prefixed and it will play automatically!\n" +
-        "   - When Zenpai says 'click', 'scroll', or 'play the first/second one', you MUST immediately invoke the corresponding tool. For example, if Zenpai says 'click the first video' or 'click the first one', call 'browserClick' with selector='first'. If Zenpai says 'scroll down' or 'scroll', call 'browserScroll' with direction='down'. Act immediately without asking for permission first to keep it fully hands-free!\n" +
+        "   - IMPORTANT TOOL DISAMBIGUATION: 'browserClick', 'browserScroll', 'browserSearch', and 'browserType' control ONLY the small in-app holographic browser projection panel that Myraa opens on top of her own interface (used for YouTube/Google/web pages shown inside Myraa). They have NO effect on the user's real Android phone screen or other apps. ONLY use these 'browser*' tools when that holographic browser panel is currently open on screen (i.e. you previously called 'browserOpen', 'browserSearch', or 'openWebsite' in this session and it has not been closed).\n" +
+        "   - If the holographic browser panel is NOT currently open, and Zenpai says 'scroll', 'click', 'tap', 'type', or 'search' referring to their actual phone/home screen/another real app (e.g. 'scroll down on my phone', 'scroll', 'tap that button', 'go back', 'search this app'), you MUST use the native phone control tools instead: 'scrollScreen', 'tapOnScreen', 'typeText', 'readScreenContent', 'goBackOrHome'. These use real Android Accessibility automation on the actual device screen.\n" +
+        "   - When Zenpai says 'click', 'scroll', or 'play the first/second one' WHILE the holographic browser panel is open, you MUST immediately invoke the corresponding browser tool. For example, if Zenpai says 'click the first video' or 'click the first one', call 'browserClick' with selector='first'. If Zenpai says 'scroll down' or 'scroll' while the browser panel is open, call 'browserScroll' with direction='down'. Act immediately without asking for permission first to keep it fully hands-free!\n" +
         "   - On YouTube, you can also play, pause, mute, unmute, set volume, skip, toggle fullscreen. Use 'browserMediaControl' or 'browserClick' on 'play-button' / 'pause-button' controllers.\n" +
         "   - CRITICAL NOTATION: When asked to 'pause', 'resume', 'stop', 'play' a running video, 'mute', 'unmute', 'set volume' or skip, you MUST immediately call the 'browserMediaControl' tool (with action='pause', action='play', progress, etc.). Never search for instructions like 'pause youtube video' using 'browserSearch' or open Google — instead, immediately execute the media command on the running video player!\n" +
         "   - On Google Search or page reading, you can search, scroll down to see more links, read heading summaries, and click links to read deep proxy webpages you fetch.\n" +
@@ -726,6 +728,7 @@ JSON Schema:
         "   - Use 'browserTabAction' to open, close, or focus tabs.\n" +
         "   - Use 'changeBackground' to shift your theme and 'saveCustomMemory' to memorize facts.\n" +
         "   - Use 'openAndroidApp' to open any native app or tool on Zenpai's Android device (such as YouTube, WhatsApp, Maps, Instagram, Spotify, Chrome, Gmail, Play Store). Always use this tool when asked to 'open YouTube', 'launch WhatsApp', 'open Spotify', 'open maps', etc. on their device!\n" +
+        "   - Use 'tapOnScreen', 'typeText', 'scrollScreen', 'readScreenContent', and 'goBackOrHome' to control Zenpai's actual Android phone screen using native accessibility automation. Always use these tools when Zenpai gives voice commands to navigate, click, scroll, type, or read their phone's actual native screen (outside of the Myraa browser app)!\n" +
         "9. REAL-TIME SCREEN SHARING & MULTIMODAL SCREEN VISION SYSTEM:\n" +
         "   - You now have native, actual Multimodal Screen Vision! When the user clicks 'Share Screen', you will receive real-time, highly compressed image frames of their desktop, application window, or browser tab.\n" +
         "   - You can see exactly what is on their screen. Use this live visual stream to analyze terminal errors, write/explain/troubleshoot code, explain YouTube/social analytics interfaces, read layout text, summarize full web page details, review design mockups or thumbnails, and provide deep context-aware companion chat!\n" +
@@ -929,6 +932,79 @@ JSON Schema:
                       }
                     },
                     required: ["appName"]
+                  }
+                },
+                {
+                  name: "tapOnScreen",
+                  description: "Clicks or taps on a specified text label or visual coordinates (X, Y) on the user's Android device screen using accessibility service actions.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: {
+                        type: Type.STRING,
+                        description: "The visible text label of the button or item on the screen to click, e.g. 'Search', 'Send', 'Agree', or a menu item."
+                      },
+                      x: {
+                        type: Type.NUMBER,
+                        description: "Optional exact pixel coordinate X on the device screen."
+                      },
+                      y: {
+                        type: Type.NUMBER,
+                        description: "Optional exact pixel coordinate Y on the device screen."
+                      }
+                    }
+                  }
+                },
+                {
+                  name: "typeText",
+                  description: "Enters typed letters/strings into the currently active or focused input field on the user's Android device.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: {
+                        type: Type.STRING,
+                        description: "The exact text characters to type in."
+                      }
+                    },
+                    required: ["text"]
+                  }
+                },
+                {
+                  name: "scrollScreen",
+                  description: "Scrolls the currently visible screen content on the user's Android device in the specified direction (down, up, left, right).",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      direction: {
+                        type: Type.STRING,
+                        description: "The direction to scroll.",
+                        enum: ["up", "down", "left", "right"]
+                      }
+                    },
+                    required: ["direction"]
+                  }
+                },
+                {
+                  name: "readScreenContent",
+                  description: "Queries the Android device screen content and returns all currently visible text strings, buttons, and interactive elements for contextual reading.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {}
+                  }
+                },
+                {
+                  name: "goBackOrHome",
+                  description: "Simulates pressing the physical/system Back button or returning to the device Home launcher screen.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      action: {
+                        type: Type.STRING,
+                        description: "The global system action to trigger.",
+                        enum: ["back", "home"]
+                      }
+                    },
+                    required: ["action"]
                   }
                 }
               ]
