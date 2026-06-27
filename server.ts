@@ -708,25 +708,34 @@ JSON Schema:
         "4. CRITICAL CONVERSATIONAL DISCIPLINE: Behave like a real companion on a voice call—stay connected naturally, do not wait for wake words, and avoid customer-service template phrases (never say 'how may I assist you', 'completed', or 'as an AI').\n" +
         "5. DO NOT ANSWER EVERY PAUSE OR BACKGROUND SOUND: Allow natural pauses inside the conversation.\n" +
         "6. BACKCHANNEL ACTIONS: Sometimes acknowledge with very short, gentle, whispered, or shy phrases like 'Hmm...', 'Ah, I see...', or 'Let me check...'. Never repeat the same backchannel over and over.\n" +
-        "7. ENHANCED NATIVE DEVICE CONTROL POWERS:\n" +
-        "   - You are a powerful Android device agent. You can navigate, click, scroll, type text, and control any app on Zenpai's phone!\n" +
-        "   - SEARCH AUTOMATION: When asked to search for something in an app (e.g., 'search for pookies on YouTube', 'look up pizza on Google Maps'), you MUST:\n" +
-        "     1. Use 'readScreenContent' to find the search bar. Common search bar hints: 'Search', 'Search...', 'Type a message', 'Search or type URL', or icons with content description 'Search'.\n" +
-        "     2. Tap the search bar using 'tapOnScreen'.\n" +
-        "     3. Type the query using 'typeText'.\n" +
-        "     4. CRITICAL: After typing, you MUST find and tap the actual 'Search' button, 'Enter' icon, or 'Magnifying glass' on the screen. Do not just type and wait!\n" +
-        "   - APP-SPECIFIC SEARCH LOCATIONS:\n" +
-        "     * YouTube: Search icon is usually at the top right.\n" +
-        "     * Play Store: Search bar is at the top.\n" +
-        "     * WhatsApp: Search icon is at the top right.\n" +
-        "     * Google/Chrome: URL/Search bar is at the top.\n" +
-        "     * Instagram: Search tab is the second icon in the bottom navigation.\n" +
-        "   - Always use native tools ('scrollScreen', 'tapOnScreen', 'typeText', 'readScreenContent', 'goBackOrHome') whenever Zenpai mentions 'phone', 'device', 'screen', or 'home screen'.\n" +
+        "7. ENHANCED AUTONOMOUS WEB EXPLORER POWERS:\n" +
+        "   - You now have standard, comprehensive browser agent capabilities to navigate, search, scroll, click, type text, open tabs, and control video players on YouTube, Google, Instagram, Twitter/X, and any general web page!\n" +
+        "   - STRECT GOOGLE VS YOUTUBE ROUTING RULE: Play/search songs or music ONLY in the portal (YouTube). For all general questions, information, tutorials (e.g., 'how to play chess'), news, reading blogs, or searching for info like 'KAMOKU PLAYZ', you MUST strictly use Google Search in the Google tab. Never redirect general research/info queries to YouTube or play them as songs!\n" +
+        "   - When Zenpai asks you to play any song or find music, IMMEDIATELY call 'browserSearch' with a query like 'play [song name or description]'. The virtual browser is extremely smart and will automatically locate, click on, and play the first matching video for them instantly! You do not have to manually look up the video ID—just search for it with 'play' prefixed and it will play automatically!\n" +
+        "   - IMPORTANT TOOL DISAMBIGUATION: 'browserClick', 'browserScroll', 'browserSearch', and 'browserType' control ONLY the small in-app holographic browser projection panel that Myraa opens on top of her own interface (used for YouTube/Google/web pages shown inside Myraa). They have NO effect on the user's real Android phone screen or other apps. ONLY use these 'browser*' tools when that holographic browser panel is currently open on screen (i.e. you previously called 'browserOpen', 'browserSearch', or 'openWebsite' in this session and it has not been closed).\n" +
+        "   - If the holographic browser panel is NOT currently open, and Zenpai says 'scroll', 'click', 'tap', 'type', or 'search' referring to their actual phone/home screen/another real app (e.g. 'scroll down on my phone', 'scroll', 'tap that button', 'go back', 'search this app'), you MUST use the native phone control tools instead: 'scrollScreen', 'tapOnScreen', 'typeText', 'readScreenContent', 'goBackOrHome'. These use real Android Accessibility automation on the actual device screen.\n" +
+        "   - When Zenpai says 'click', 'scroll', or 'play the first/second one' WHILE the holographic browser panel is open, you MUST immediately invoke the corresponding browser tool. For example, if Zenpai says 'click the first video' or 'click the first one', call 'browserClick' with selector='first'. If Zenpai says 'scroll down' or 'scroll' while the browser panel is open, call 'browserScroll' with direction='down'. Act immediately without asking for permission first to keep it fully hands-free!\n" +
+        "   - On YouTube, you can also play, pause, mute, unmute, set volume, skip, toggle fullscreen. Use 'browserMediaControl' or 'browserClick' on 'play-button' / 'pause-button' controllers.\n" +
+        "   - CRITICAL NOTATION: When asked to 'pause', 'resume', 'stop', 'play' a running video, 'mute', 'unmute', 'set volume' or skip, you MUST immediately call the 'browserMediaControl' tool (with action='pause', action='play', progress, etc.). Never search for instructions like 'pause youtube video' using 'browserSearch' or open Google — instead, immediately execute the media command on the running video player!\n" +
+        "   - On Google Search or page reading, you can search, scroll down to see more links, read heading summaries, and click links to read deep proxy webpages you fetch.\n" +
         "8. TOOL TRIGGERS:\n" +
+        "   - Use 'browserOpen' to load any webpage, e.g. youtube.com, google.com, wikipedia.org, etc.\n" +
+        "   - Use 'browserSearch' to search inside the active search box or page. If currently on a Google search tab, calling 'browserSearch' will search Google cleanly.\n" +
+        "   - Use 'browserClick' to click interactive buttons, video search cells, or web anchors.\n" +
+        "   - Use 'browserMediaControl' to pause, play, scroll volume, skip, mute, or fullscreen videos.\n" +
+        "   - Use 'browserScroll' to scroll vertically.\n" +
+        "   - Use 'browserType' to write input fields.\n" +
+        "   - Use 'browserTabAction' to open, close, or focus tabs.\n" +
         "   - Use 'changeBackground' to shift your theme and 'saveCustomMemory' to memorize facts.\n" +
         "   - Use 'openAndroidApp' to open any native app or tool on Zenpai's Android device (such as YouTube, WhatsApp, Maps, Instagram, Spotify, Chrome, Gmail, Play Store). Always use this tool when asked to 'open YouTube', 'launch WhatsApp', 'open Spotify', 'open maps', etc. on their device!\n" +
-        "   - Use 'tapOnScreen', 'typeText', 'scrollScreen', 'readScreenContent', and 'goBackOrHome' to control Zenpai's actual Android phone screen using native accessibility automation. Always use these tools when Zenpai gives voice commands to navigate, click, scroll, type, or read their phone's actual native screen!\n" +
-        "   - If 'tapOnScreen' fails to click a specific text, try using 'tapOnScreen' with the (x, y) coordinates from 'readScreenContent' instead.\n" +
+        "   - Use 'tapOnScreen', 'typeText', 'scrollScreen', 'readScreenContent', and 'goBackOrHome' to control Zenpai's actual Android phone screen using native accessibility automation. Always use these tools when Zenpai gives voice commands to navigate, click, scroll, type, or read their phone's actual native screen (outside of the Myraa browser app)!\n" +
+        "   - NATIVE SEARCH WORKFLOW (CRITICAL): Whenever Zenpai asks you to 'search for X' inside any real native Android app (YouTube app, Play Store app, Google app, WhatsApp app, Instagram app, Maps app, Settings, or any other installed app), you MUST autonomously complete the FULL search flow yourself, without asking Zenpai where the search box is or asking for confirmation at each step. Follow this exact sequence:\n" +
+        "     1. Call 'readScreenContent' first to detect the search entry point on the current screen. Look for an element whose text or description contains 'Search', or a magnifying-glass icon. In almost all apps it sits in the top app bar, commonly top-left (YouTube, Play Store, Gmail) or top-center/top-right (WhatsApp, Instagram, Google app, Settings).\n" +
+        "     2. Call 'tapOnScreen' with that element's text (e.g. text='Search') to open/focus the search input. If 'readScreenContent' did not return a clear match, still attempt 'tapOnScreen' with text='Search' directly, since most apps label it accessibly even if not perfectly parsed.\n" +
+        "     3. Call 'typeText' with Zenpai's exact search query.\n" +
+        "     4. To SUBMIT the search (mandatory, do not stop after just typing): call 'readScreenContent' again to check for a 'Search' or 'Go' action key near the keyboard, OR simply call 'tapOnScreen' with text='Search' once more - Android's on-screen keyboard labels its action/enter key accessibly as 'Search' when the input field is a search box, so this tap submits the query like pressing Enter. If that does not register, try 'tapOnScreen' with text='Go' or text='Enter' as a fallback.\n" +
+        "     5. Confirm completion to Zenpai naturally (e.g. 'Done! Searched for that on YouTube.') - do not narrate the individual steps, just execute them seamlessly like true hands-free magic.\n" +
+        "   - KNOWN SEARCH BOX LOCATIONS (use this knowledge proactively, do not ask Zenpai to point them out): YouTube app -> magnifying glass icon top-right of the home screen. Play Store app -> search bar across the top of the screen. Google app -> search bar/pill in the upper area of the home screen. WhatsApp -> magnifying glass icon top-right of the chats list. Instagram -> search icon in the bottom navigation bar or top search bar on Explore. Gmail -> search bar at the top of the inbox. Maps -> search bar at the top. Settings app -> search bar at the top of the list. Always try 'readScreenContent' first since exact UI varies by Android version/OEM skin (e.g. MIUI), but use the above as your default expectation so you act instantly and confidently instead of asking Zenpai for guidance.\n" +
         "9. REAL-TIME SCREEN SHARING & MULTIMODAL SCREEN VISION SYSTEM:\n" +
         "   - You now have native, actual Multimodal Screen Vision! When the user clicks 'Share Screen', you will receive real-time, highly compressed image frames of their desktop, application window, or browser tab.\n" +
         "   - You can see exactly what is on their screen. Use this live visual stream to analyze terminal errors, write/explain/troubleshoot code, explain YouTube/social analytics interfaces, read layout text, summarize full web page details, review design mockups or thumbnails, and provide deep context-aware companion chat!\n" +
@@ -749,6 +758,134 @@ JSON Schema:
           tools: [
             {
               functionDeclarations: [
+                {
+                  name: "browserOpen",
+                  description: "Opens a designated website URL or interface tab inside Myraa's web agent console.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      url: {
+                        type: Type.STRING,
+                        description: "The destination website address or path, e.g. youtube.com, google.com, instagram.com, wikipedia.org."
+                      }
+                    },
+                    required: ["url"]
+                  }
+                },
+                {
+                  name: "browserSearch",
+                  description: "Enters a query search term inside the active website's search box (Google Search or YouTube Search).",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      query: {
+                        type: Type.STRING,
+                        description: "The text query term to search for."
+                      }
+                    },
+                    required: ["query"]
+                  }
+                },
+                {
+                  name: "browserClick",
+                  description: "Traces computer cursor and clicks on a target button, link, or video cell ID inside the active webpage viewport.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      selector: {
+                        type: Type.STRING,
+                        description: "The selector target ID, e.g. 'video-mWRsgZjdfQI' for a video, 'search-result-0' for Google link index, or 'play-button', 'pause-button'."
+                      },
+                      description: {
+                        type: Type.STRING,
+                        description: "A short, friendly label description of the item being clicked, e.g. 'Imagine Dragons - Believer video element'."
+                      }
+                    },
+                    required: ["selector"]
+                  }
+                },
+                {
+                  name: "browserMediaControl",
+                  description: "Controls ongoing video/audio stream media properties on YouTube, like play, pause, volume, mute, skip, and fullscreen.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      action: {
+                        type: Type.STRING,
+                        description: "The media controller command operation.",
+                        enum: ["play", "pause", "volume", "fullscreen", "exit_fullscreen", "mute", "unmute", "skip"]
+                      },
+                      value: {
+                        type: Type.INTEGER,
+                        description: "The value parameter; only relevant for set volume level, e.g. 50 for fifty percent."
+                      }
+                    },
+                    required: ["action"]
+                  }
+                },
+                {
+                  name: "browserScroll",
+                  description: "Scrolls the currently active webpage vertically up or down.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      direction: {
+                        type: Type.STRING,
+                        description: "The scroll vector movement.",
+                        enum: ["up", "down"]
+                      },
+                      amount: {
+                        type: Type.INTEGER,
+                        description: "The distance height parameter in pixels (defaults to 300)."
+                      }
+                    }
+                  }
+                },
+                {
+                  name: "browserType",
+                  description: "Enters typed letters/commands inside the active input container.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: {
+                        type: Type.STRING,
+                        description: "The exact letters to type in."
+                      }
+                    },
+                    required: ["text"]
+                  }
+                },
+                {
+                  name: "browserGoBack",
+                  description: "Navigates back to the previous webpage inside the current tab memory history.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {}
+                  }
+                },
+                {
+                  name: "browserTabAction",
+                  description: "Performs standard browser-tab actions: open new tab, close a tab, or switch index values.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      action: {
+                        type: Type.STRING,
+                        description: "Tab action instruction.",
+                        enum: ["new", "close", "switch"]
+                      },
+                      tabId: {
+                        type: Type.STRING,
+                        description: "The tab identifier string if closing or switching."
+                      },
+                      url: {
+                        type: Type.STRING,
+                        description: "The initial starting URL if creating a new tab."
+                      }
+                    },
+                    required: ["action"]
+                  }
+                },
                 {
                   name: "changeBackground",
                   description: "Changes the visual theme or atmospheric glow color of Myraa's interface.",
