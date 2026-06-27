@@ -21,6 +21,7 @@ interface MyraaAccessibilityPluginType {
   performScroll(args: { direction: string }): Promise<{ success: boolean }>;
   performGlobalAction(args: { action: string }): Promise<{ success: boolean }>;
   getScreenContent(): Promise<{ elements: any[] }>;
+  submitSearch(): Promise<{ success: boolean }>;
 }
 
 const MyraaAccessibility = registerPlugin<MyraaAccessibilityPluginType>("MyraaAccessibility");
@@ -791,6 +792,19 @@ export default function App() {
               callback({ result: res.success ? `Successfully triggered Android global action: ${args.action}` : `Failed to execute system ${args.action} action.` });
             } catch (err: any) {
               callback({ error: `Could not execute global action: ${err.message || err}` });
+            }
+          })();
+        } else if (name === "submitSearch") {
+          (async () => {
+            try {
+              if (!Capacitor.isNativePlatform()) {
+                callback({ error: "submitSearch is only supported inside the native Android mobile app." });
+                return;
+              }
+              const res = await MyraaAccessibility.submitSearch();
+              callback({ result: res.success ? `Successfully submitted the search.` : `Could not submit the search - the field may not be focused.` });
+            } catch (err: any) {
+              callback({ error: `Could not submit search: ${err.message || err}` });
             }
           })();
         } else {
