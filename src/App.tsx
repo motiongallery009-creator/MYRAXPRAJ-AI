@@ -840,6 +840,32 @@ export default function App() {
     }
   };
 
+  // Auto-disconnect after a period of inactivity (no speech/transcription/tool activity)
+  // so the overlay bubble + background service don't keep running forever and draining battery.
+  const lastActivityRef = useRef<number>(Date.now());
+  const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes of silence auto-disconnects
+
+  useEffect(() => {
+    // Any time the conversation state changes (listening/speaking/connecting), reset the idle clock
+    lastActivityRef.current = Date.now();
+  }, [state, userCaption, modelCaption]);
+
+  useEffect(() => {
+    if (state === "disconnected") return;
+
+    const idleCheckInterval = setInterval(() => {
+      const idleFor = Date.now() - lastActivityRef.current;
+      if (idleFor >= IDLE_TIMEOUT_MS) {
+        console.log("[IdleTimeout] No activity detected for a while. Auto-disconnecting Myraa to save battery.");
+        if (sessionRef.current) {
+          sessionRef.current.disconnect();
+        }
+      }
+    }, 15000); // check every 15 seconds
+
+    return () => clearInterval(idleCheckInterval);
+  }, [state]);
+
   // Hands-free local wake-word trigger ("Hey Myra") to automatically start interaction
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
